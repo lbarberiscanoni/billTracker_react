@@ -1,16 +1,31 @@
 {
   "name": "bill_tracking_react",
   "version": "1.0.0",
-  "description": "",
+  "description": "React version of the Bill Tracker for YIG",
   "main": "index.js",
   "scripts": {
-    "start": "webpack-dev-server"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "watchify-server js/bundle.js --port 8000"
   },
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lbarberiscanoni/billTracker_react.git"
+  },
+  "author": "Lorenzo Barberis Canonico",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lbarberiscanoni/billTracker_react/issues"
+  },
+  "homepage": "https://github.com/lbarberiscanoni/billTracker_react#readme",
   "dependencies": {
-    "firebase": "^3.3.0",
-    "react": "^15.3.1",
-    "react-dom": "^15.3.1"
+    "babel-cli": "^6.16.0",
+    "babel-preset-es2015": "^6.16.0",
+    "babel-preset-es2016": "^6.16.0",
+    "babel-preset-react": "^6.16.0",
+    "firebase": "^3.4.1",
+    "jquery": "^3.1.1",
+    "react": "^15.3.2",
+    "react-dom": "^15.3.2",
+    "watchify-server": "^1.0.2"
   }
 }
