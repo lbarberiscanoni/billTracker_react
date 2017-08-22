@@ -28,9 +28,9 @@ class Bill extends React.Component {
             return(
                 <div>
                     { this.showBill(this.props.bill) }
-                    <button onClick={ this.evalBill.bind(this, "fail")}>Fail</button>
+                    <button onClick={ this.evalBill.bind(this, "failed")}>Fail</button>
 
-                    <button onClick={ this.evalBill.bind(this, "pass")}>Pass</button>
+                    <button onClick={ this.evalBill.bind(this, "passed")}>Pass</button>
                 </div>
             )
         } else {

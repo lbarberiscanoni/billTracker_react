@@ -4,6 +4,8 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _jquery = require("jquery");
@@ -46,7 +48,8 @@ var BillList = function (_React$Component) {
 
         _this.state = {
             docket: [],
-            bill: "Select a Bill"
+            bill: "Select a Bill",
+            position: ""
         };
         return _this;
     }
@@ -56,10 +59,12 @@ var BillList = function (_React$Component) {
         value: function listenForNewChamber() {
             var mainDB = this.props.db.child("sc").child("chambers");
             var legislation = [];
+            var position_keys = [];
             currentChamber = this.props.location;
             mainDB.child(this.props.location).child("docket").on("child_added", function (snapshot) {
                 legislation.push(snapshot.val().id);
-                this.setState({ "docket": legislation });
+                position_keys.push(snapshot.key);
+                this.setState({ "docket": legislation, "position": position_keys });
             }.bind(this));
         }
     }, {
@@ -97,56 +102,95 @@ var BillList = function (_React$Component) {
     }, {
         key: "changeBillStatus",
         value: function changeBillStatus(status) {
-            console.log("fired");
-            var mainDB = this.props.db.child("sc").child("chambers");
-            mainDB.child(this.props.location).child(this.state.bill).update({ status: status });
+            var mainDB = this.props.db.child("sc");
+
+            //find the id on the chamber side of the db
+            var docketList = this.state.docket;
+            var index = docketList.indexOf(this.state.bill);
+            var billPosition = this.state.position[index];
+
+            //update the status on the chamber side of the db
+            mainDB.child("chambers").child(this.props.location).child("docket").child(billPosition).update({ status: status });
+
+            //update teh status on the bill side of the db
+            mainDB.child("bills").child(this.state.bill).update({ "billStatus": status });
+
+            //push a bill to the next chamber 
+            if (status == "passed") {
+                var division = this.props.location.split("-")[0];
+                var current_chamber = this.props.location.split("-")[1];
+                var current_bill = this.state.bill;
+                switch (current_chamber) {
+                    case "house":
+                        mainDB.child("chambers").child(division + "-senate").child("docket").push({ "id": current_bill, "status": "todo" });
+                        mainDB.child("bills").child(this.state.bill).update({ "billLocation": "senate" });
+                        break;
+                    case "senate":
+                        mainDB.child("chambers").child("governor-desk").child("docket").push({ "id": current_bill, "status": "todo" });
+                        mainDB.child("bills").child(this.state.bill).update({ "billLocation": "governor-desk" });
+                        break;
+                    default:
+                        mainDB.child("chambers").child(division + "-house").child("docket").push({ "id": current_bill, "status": "todo" });
+                        mainDB.child("bills").child(this.state.bill).update({ "billLocation": "house" });
+                }
+                console.log("update went through");
+            }
+
+            //clean up the interface
+            this.setState({ "bill": "Select a Bill" });
         }
     }, {
         key: "render",
         value: function render() {
             var _this2 = this;
 
-            var list_components = [];
-            this.state.docket.map(function (x, i) {
-                list_components.push(_react2.default.createElement(
-                    "button",
-                    { onClick: _this2.seeBill.bind(_this2, x) },
-                    " ",
-                    x
-                ));
-            });
-            return _react2.default.createElement(
-                "div",
-                { className: "bill_list" },
-                _react2.default.createElement(
-                    "h2",
-                    null,
-                    " ",
-                    this.props.location,
-                    " "
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "docket" },
-                    list_components
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "bill_visualization" },
-                    _react2.default.createElement(
-                        "h2",
-                        null,
-                        " ",
-                        this.state.bill
-                    ),
-                    _react2.default.createElement(
-                        "p",
-                        null,
-                        "Test"
-                    ),
-                    _react2.default.createElement(_bill2.default, { changeBillStatus: this.changeBillStatus.bind(this), db: this.props.db, bill: this.state.bill })
-                )
-            );
+            var _ret = function () {
+                switch (_this2.props.user) {
+                    case "clerk":
+                        var list_components = [];
+                        _this2.state.docket.map(function (x, i) {
+                            list_components.push(_react2.default.createElement(
+                                "button",
+                                { onClick: _this2.seeBill.bind(_this2, x) },
+                                " ",
+                                x
+                            ));
+                        });
+                        return {
+                            v: _react2.default.createElement(
+                                "div",
+                                { className: "bill_list" },
+                                _react2.default.createElement(
+                                    "h2",
+                                    null,
+                                    " ",
+                                    _this2.props.location,
+                                    " "
+                                ),
+                                _react2.default.createElement(
+                                    "div",
+                                    { className: "docket" },
+                                    list_components
+                                ),
+                                _react2.default.createElement(
+                                    "div",
+                                    { className: "bill_visualization" },
+                                    _react2.default.createElement(
+                                        "h2",
+                                        null,
+                                        " ",
+                                        _this2.state.bill
+                                    ),
+                                    _react2.default.createElement(_bill2.default, { changeBillStatus: _this2.changeBillStatus.bind(_this2), db: _this2.props.db, bill: _this2.state.bill })
+                                )
+                            )
+                        };
+                        break;
+                    case "governor":
+                }
+            }();
+
+            if ((typeof _ret === "undefined" ? "undefined" : _typeof(_ret)) === "object") return _ret.v;
         }
     }]);
 

@@ -4,8 +4,6 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _jquery = require("jquery");
@@ -49,13 +47,15 @@ var NavBar = function (_React$Component) {
     _createClass(NavBar, [{
         key: "generateRandomBill",
         value: function generateRandomBill() {
+            var chamber_list = ["a", "b", "c", "d", "e", "f", "g"];
+            var location = chamber_list[Math.floor(Math.random() * chamber_list.length)];
             var randomText = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5);
             var randomBill = {
                 author1: randomText,
                 author2: randomText,
                 author1Location: "none",
                 author2Location: "none",
-                billLocation: "none",
+                billLocation: location,
                 billStatus: "none",
                 billText: randomText,
                 billTitle: randomText,
@@ -87,55 +87,61 @@ var NavBar = function (_React$Component) {
         value: function render() {
             var _this2 = this;
 
-            var _ret = function () {
-                switch (_this2.props.user) {
-                    case "director":
-                        return {
-                            v: _react2.default.createElement(
-                                "nav",
-                                null,
-                                _react2.default.createElement(
-                                    "button",
-                                    null,
-                                    "HOME"
-                                ),
-                                _react2.default.createElement(
-                                    "button",
-                                    { onClick: _this2.generateRandomBill.bind(_this2) },
-                                    "Add Bill"
-                                )
-                            )
-                        };
-                    case "clerk":
-                        var nav_components = [];
-                        _this2.state.chambers.map(function (x, i) {
-                            nav_components.push(_react2.default.createElement(
-                                "button",
-                                { onClick: _this2.navigate.bind(_this2, x) },
-                                " ",
-                                x,
-                                " "
-                            ));
-                        });
-                        return {
-                            v: _react2.default.createElement(
-                                "nav",
-                                null,
-                                nav_components
-                            )
-                        };
-                    case "governor":
-                        return {
-                            v: _react2.default.createElement("nav", null)
-                        };
-                    case "resource_staff":
-                        return {
-                            v: _react2.default.createElement("nav", null)
-                        };
-                }
-            }();
-
-            if ((typeof _ret === "undefined" ? "undefined" : _typeof(_ret)) === "object") return _ret.v;
+            var nav_components = [];
+            switch (this.props.user) {
+                case "director":
+                    return _react2.default.createElement(
+                        "nav",
+                        null,
+                        _react2.default.createElement(
+                            "button",
+                            null,
+                            "HOME"
+                        ),
+                        _react2.default.createElement(
+                            "button",
+                            { onClick: this.generateRandomBill.bind(this) },
+                            "Add Bill"
+                        )
+                    );
+                case "clerk":
+                    this.state.chambers.map(function (x) {
+                        nav_components.push(_react2.default.createElement(
+                            "button",
+                            { onClick: _this2.navigate.bind(_this2, x) },
+                            " ",
+                            x,
+                            " "
+                        ));
+                    });
+                    return _react2.default.createElement(
+                        "nav",
+                        null,
+                        _react2.default.createElement(
+                            "button",
+                            { onClick: this.generateRandomBill.bind(this) },
+                            "Add Bill"
+                        ),
+                        nav_components
+                    );
+                case "governor":
+                    var gov_pages = ["pre-screening", "governor-desk", "questions"];
+                    gov_pages.map(function (x) {
+                        nav_components.push(_react2.default.createElement(
+                            "button",
+                            { onClick: _this2.navigate.bind(_this2, x) },
+                            " ",
+                            x
+                        ));
+                    });
+                    return _react2.default.createElement(
+                        "nav",
+                        null,
+                        nav_components
+                    );
+                case "resource_staff":
+                    return _react2.default.createElement("nav", null);
+            }
         }
     }]);
 

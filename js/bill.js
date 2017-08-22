@@ -88,12 +88,12 @@ var Bill = function (_React$Component) {
                     this.showBill(this.props.bill),
                     _react2.default.createElement(
                         "button",
-                        { onClick: this.evalBill.bind(this, "fail") },
+                        { onClick: this.evalBill.bind(this, "failed") },
                         "Fail"
                     ),
                     _react2.default.createElement(
                         "button",
-                        { onClick: this.evalBill.bind(this, "pass") },
+                        { onClick: this.evalBill.bind(this, "passed") },
                         "Pass"
                     )
                 );

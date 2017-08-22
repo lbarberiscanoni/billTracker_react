@@ -89,12 +89,12 @@ var Bill = function (_React$Component) {
                     this.showBill(this.props.bill),
                     _react2.default.createElement(
                         "button",
-                        { onClick: this.evalBill.bind(this, "fail") },
+                        { onClick: this.evalBill.bind(this, "failed") },
                         "Fail"
                     ),
                     _react2.default.createElement(
                         "button",
-                        { onClick: this.evalBill.bind(this, "pass") },
+                        { onClick: this.evalBill.bind(this, "passed") },
                         "Pass"
                     )
                 );
@@ -157,7 +157,8 @@ var BillList = function (_React$Component) {
 
         _this.state = {
             docket: [],
-            bill: "Select a Bill"
+            bill: "Select a Bill",
+            position: ""
         };
         return _this;
     }
@@ -167,10 +168,12 @@ var BillList = function (_React$Component) {
         value: function listenForNewChamber() {
             var mainDB = this.props.db.child("sc").child("chambers");
             var legislation = [];
+            var position_keys = [];
             currentChamber = this.props.location;
             mainDB.child(this.props.location).child("docket").on("child_added", function (snapshot) {
                 legislation.push(snapshot.val().id);
-                this.setState({ "docket": legislation });
+                position_keys.push(snapshot.key);
+                this.setState({ "docket": legislation, "position": position_keys });
             }.bind(this));
         }
     }, {
@@ -208,15 +211,49 @@ var BillList = function (_React$Component) {
     }, {
         key: "changeBillStatus",
         value: function changeBillStatus(status) {
-            console.log("fired");
-            var mainDB = this.props.db.child("sc").child("chambers");
-            mainDB.child(this.props.location).child(this.state.bill).update({ status: status });
+            var mainDB = this.props.db.child("sc");
+
+            //find the id on the chamber side of the db
+            var docketList = this.state.docket;
+            var index = docketList.indexOf(this.state.bill);
+            var billPosition = this.state.position[index];
+
+            //update the status on the chamber side of the db
+            mainDB.child("chambers").child(this.props.location).child("docket").child(billPosition).update({ status: status });
+
+            //update teh status on the bill side of the db
+            mainDB.child("bills").child(this.state.bill).update({ "billStatus": status });
+
+            //push a bill to the next chamber 
+            if (status == "passed") {
+                var division = this.props.location.split("-")[0];
+                var current_chamber = this.props.location.split("-")[1];
+                var current_bill = this.state.bill;
+                switch (current_chamber) {
+                    case "house":
+                        mainDB.child("chambers").child(division + "-senate").child("docket").push({ "id": current_bill, "status": "todo" });
+                        mainDB.child("bills").child(this.state.bill).update({ "billLocation": "senate" });
+                        break;
+                    case "senate":
+                        mainDB.child("chambers").child("governor-desk").child("docket").push({ "id": current_bill, "status": "todo" });
+                        mainDB.child("bills").child(this.state.bill).update({ "billLocation": "governor-desk" });
+                        break;
+                    default:
+                        mainDB.child("chambers").child(division + "-house").child("docket").push({ "id": current_bill, "status": "todo" });
+                        mainDB.child("bills").child(this.state.bill).update({ "billLocation": "house" });
+                }
+                console.log("update went through");
+            }
+
+            //clean up the interface
+            this.setState({ "bill": "Select a Bill" });
         }
     }, {
         key: "render",
         value: function render() {
             var _this2 = this;
 
+            console.log(this.state);
             var list_components = [];
             this.state.docket.map(function (x, i) {
                 list_components.push(_react2.default.createElement(
@@ -249,11 +286,6 @@ var BillList = function (_React$Component) {
                         null,
                         " ",
                         this.state.bill
-                    ),
-                    _react2.default.createElement(
-                        "p",
-                        null,
-                        "Test"
                     ),
                     _react2.default.createElement(_bill2.default, { changeBillStatus: this.changeBillStatus.bind(this), db: this.props.db, bill: this.state.bill })
                 )
@@ -337,8 +369,8 @@ var App = function (_React$Component) {
 
         _this.state = {
             userID: "",
-            userLevel: "clerk",
-            location: "senate",
+            userLevel: "governor",
+            location: "governor-desk",
             logStatus: "in"
         };
         return _this;
@@ -348,8 +380,18 @@ var App = function (_React$Component) {
         key: "addBill",
         value: function addBill(bill) {
             console.log(bill);
-            mainDB.child("bills").push(bill);
+            var chamber_location = bill.division + "-" + bill.billLocation;
+            console.log(chamber_location);
+
+            //add it to teh bill side of the db
+            var thisBill = mainDB.child("sc").child("bills").push(bill);
+            var bill_ID = thisBill.key;
+            console.log(bill_ID);
             console.log("success");
+
+            //add it to the refernce to the side of the db
+            mainDB.child("sc").child("chambers").child(chamber_location).child("docket").push({ "id": bill_ID, "status": "todo" });
+            console.log("done");
         }
     }, {
         key: "navigate",
@@ -357,23 +399,68 @@ var App = function (_React$Component) {
             this.setState({ "location": new_location });
         }
     }, {
+        key: "generateChambers",
+        value: function generateChambers() {
+            console.log("fired4");
+            var listOfChambers = { "governor-desk": { "a": "a" } };
+            var letterList = ["a", "b", "c", "d", "e", "f", "g", "house", "senate"];
+            letterList.map(function (x) {
+                var key = "premier-" + x;listOfChambers[key] = { "a": "a" };
+            });
+            letterList.map(function (x) {
+                var key = "upper-" + x;listOfChambers[key] = { "a": "a" };
+            });
+            console.log(listOfChambers);
+            mainDB.child("sc").child("chambers").set(listOfChambers);
+        }
+    }, {
         key: "render",
         value: function render() {
             if (this.state.logStatus == "in") {
-                return _react2.default.createElement(
-                    "div",
-                    { className: "mainContainer" },
-                    _react2.default.createElement(
-                        "h1",
-                        null,
-                        "[",
-                        this.state.userLevel,
-                        "] ",
-                        this.state.location
-                    ),
-                    _react2.default.createElement(_navBar2.default, { db: mainDB, navigate: this.navigate.bind(this), user: this.state.userLevel, addBill: this.addBill.bind(this) }),
-                    _react2.default.createElement(_billList2.default, { db: mainDB, location: this.state.location, user: this.state.userLevel })
-                );
+                switch (this.state.userLevel) {
+                    case "clerk":
+                        return _react2.default.createElement(
+                            "div",
+                            { className: "mainContainer" },
+                            _react2.default.createElement(
+                                "h1",
+                                null,
+                                "[",
+                                this.state.userLevel,
+                                "] ",
+                                this.state.location
+                            ),
+                            _react2.default.createElement(
+                                "button",
+                                { onClick: this.generateChambers.bind(this) },
+                                "Generate Chambers"
+                            ),
+                            _react2.default.createElement(_navBar2.default, { db: mainDB, navigate: this.navigate.bind(this), user: this.state.userLevel, addBill: this.addBill.bind(this) }),
+                            _react2.default.createElement(_billList2.default, { db: mainDB, location: this.state.location, user: this.state.userLevel })
+                        );
+                        break;
+                    case "governor":
+                        return _react2.default.createElement(
+                            "div",
+                            { className: "mainContainer" },
+                            _react2.default.createElement(
+                                "h1",
+                                null,
+                                "[",
+                                this.state.userLevel,
+                                "] ",
+                                this.state.location
+                            ),
+                            _react2.default.createElement(
+                                "button",
+                                { onClick: this.generateChambers.bind(this) },
+                                "Generate Chambers"
+                            ),
+                            _react2.default.createElement(_navBar2.default, { db: mainDB, navigate: this.navigate.bind(this), user: this.state.userLevel, addBill: this.addBill.bind(this) }),
+                            _react2.default.createElement(_billList2.default, { db: mainDB, location: this.state.location, user: this.state.userLevel })
+                        );
+                        break;
+                }
             } else {
                 return _react2.default.createElement(
                     "h1",
@@ -394,8 +481,6 @@ _reactDom2.default.render(_react2.default.createElement(App, null), document.get
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -440,13 +525,15 @@ var NavBar = function (_React$Component) {
     _createClass(NavBar, [{
         key: "generateRandomBill",
         value: function generateRandomBill() {
+            var chamber_list = ["a", "b", "c", "d", "e", "f", "g"];
+            var location = chamber_list[Math.floor(Math.random() * chamber_list.length)];
             var randomText = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5);
             var randomBill = {
                 author1: randomText,
                 author2: randomText,
                 author1Location: "none",
                 author2Location: "none",
-                billLocation: "none",
+                billLocation: location,
                 billStatus: "none",
                 billText: randomText,
                 billTitle: randomText,
@@ -478,55 +565,61 @@ var NavBar = function (_React$Component) {
         value: function render() {
             var _this2 = this;
 
-            var _ret = function () {
-                switch (_this2.props.user) {
-                    case "director":
-                        return {
-                            v: _react2.default.createElement(
-                                "nav",
-                                null,
-                                _react2.default.createElement(
-                                    "button",
-                                    null,
-                                    "HOME"
-                                ),
-                                _react2.default.createElement(
-                                    "button",
-                                    { onClick: _this2.generateRandomBill.bind(_this2) },
-                                    "Add Bill"
-                                )
-                            )
-                        };
-                    case "clerk":
-                        var nav_components = [];
-                        _this2.state.chambers.map(function (x, i) {
-                            nav_components.push(_react2.default.createElement(
-                                "button",
-                                { onClick: _this2.navigate.bind(_this2, x) },
-                                " ",
-                                x,
-                                " "
-                            ));
-                        });
-                        return {
-                            v: _react2.default.createElement(
-                                "nav",
-                                null,
-                                nav_components
-                            )
-                        };
-                    case "governor":
-                        return {
-                            v: _react2.default.createElement("nav", null)
-                        };
-                    case "resource_staff":
-                        return {
-                            v: _react2.default.createElement("nav", null)
-                        };
-                }
-            }();
-
-            if ((typeof _ret === "undefined" ? "undefined" : _typeof(_ret)) === "object") return _ret.v;
+            var nav_components = [];
+            switch (this.props.user) {
+                case "director":
+                    return _react2.default.createElement(
+                        "nav",
+                        null,
+                        _react2.default.createElement(
+                            "button",
+                            null,
+                            "HOME"
+                        ),
+                        _react2.default.createElement(
+                            "button",
+                            { onClick: this.generateRandomBill.bind(this) },
+                            "Add Bill"
+                        )
+                    );
+                case "clerk":
+                    this.state.chambers.map(function (x) {
+                        nav_components.push(_react2.default.createElement(
+                            "button",
+                            { onClick: _this2.navigate.bind(_this2, x) },
+                            " ",
+                            x,
+                            " "
+                        ));
+                    });
+                    return _react2.default.createElement(
+                        "nav",
+                        null,
+                        _react2.default.createElement(
+                            "button",
+                            { onClick: this.generateRandomBill.bind(this) },
+                            "Add Bill"
+                        ),
+                        nav_components
+                    );
+                case "governor":
+                    var gov_pages = ["pre-screening", "governor-desk", "questions"];
+                    gov_pages.map(function (x) {
+                        nav_components.push(_react2.default.createElement(
+                            "button",
+                            { onClick: _this2.navigate.bind(_this2, x) },
+                            " ",
+                            x
+                        ));
+                    });
+                    return _react2.default.createElement(
+                        "nav",
+                        null,
+                        nav_components
+                    );
+                case "resource_staff":
+                    return _react2.default.createElement("nav", null);
+            }
         }
     }]);
 
